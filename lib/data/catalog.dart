@@ -1,15 +1,5 @@
 import '../models/category.dart';
-
-const productCategories = <Category>[
-  Category(1, 'Перчатки'),
-  Category(2, 'Бинты'),
-  Category(3, 'Капы'),
-  Category(4, 'Шлемы'),
-  Category(5, 'Груши и мешки'),
-  Category(6, 'Лапы'),
-  Category(7, 'Обувь'),
-  Category(8, 'Защита'),
-];
+import 'seed.dart';
 
 const brandCountries = <String>[
   'США',
@@ -23,6 +13,8 @@ const brandCountries = <String>[
   'Италия',
 ];
 
+List<Category> get productCategories => buildSeedCategories();
+
 String categoryName(int id) {
   for (final category in productCategories) {
     if (category.id == id) return category.name;
@@ -33,4 +25,9 @@ String categoryName(int id) {
 String categoryLabel(List<int> ids) {
   if (ids.isEmpty) return '—';
   return ids.map(categoryName).join(', ');
+}
+
+String namesById(List<int> ids, String Function(int id) nameOf) {
+  if (ids.isEmpty) return '—';
+  return ids.map(nameOf).join(', ');
 }

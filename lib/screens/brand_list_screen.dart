@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../data/catalog.dart';
+import '../forms/validators.dart';
 import '../format.dart';
+import '../repositories/product_repository.dart';
 import '../models/brand.dart';
 import '../models/brand_query.dart';
 import '../models/load_status.dart';
@@ -58,9 +60,16 @@ class _BrandListScreenState extends State<BrandListScreen> {
     final query = widget.query;
     final cards = MediaQuery.sizeOf(context).width < kTableBreakpoint;
     return CatalogFrame(
-      header: const PageHeader(
+      header: PageHeader(
         title: 'Бренды',
-        subtitle: 'Поиск по названию и стране тоже попадает в адресную строку.',
+        subtitle: 'Страна и годы основания вместе с поиском остаются в адресе.',
+        actions: [
+          FilledButton.icon(
+            onPressed: () => context.go('/brands/new'),
+            icon: const Icon(Icons.add),
+            label: const Text('Добавить'),
+          ),
+        ],
       ),
       filters: _filters(query, cards),
       banner: notifier.hasSelection && notifier.status == LoadStatus.success
@@ -118,6 +127,30 @@ class _BrandListScreenState extends State<BrandListScreen> {
                     items: _countryItems(query.country),
                     onChanged: (value) {
                       goBrandQuery(context, query.copyWith(country: value));
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: narrow ? full : 140,
+                  child: DelayedSearchField(
+                    value: query.yearFrom?.toString() ?? '',
+                    label: 'Год от',
+                    digitsOnly: true,
+                    keyboardType: TextInputType.number,
+                    onDebounced: (value) {
+                      goBrandQuery(context, query.copyWith(yearFrom: _brandYear(value)));
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: narrow ? full : 140,
+                  child: DelayedSearchField(
+                    value: query.yearTo?.toString() ?? '',
+                    label: 'Год до',
+                    digitsOnly: true,
+                    keyboardType: TextInputType.number,
+                    onDebounced: (value) {
+                      goBrandQuery(context, query.copyWith(yearTo: _brandYear(value)));
                     },
                   ),
                 ),
@@ -346,8 +379,30 @@ class _BrandListScreenState extends State<BrandListScreen> {
     ];
   }
 
+  Future<bool> _blocked(Brand item) async {
+    final count = await context.read<ProductRepository>().countLinked(brandId: item.id);
+    final message = linkedDeleteMessage(item.name, count);
+    if (message == null || !mounted) return false;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удаление невозможно'),
+        content: Text(message),
+        actions: [
+          FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Понятно')),
+        ],
+      ),
+    );
+    return true;
+  }
+
   Future<void> _deleteSelected() async {
     final notifier = context.read<BrandListNotifier>();
+    final picked = notifier.result.items.where((item) => notifier.selected.contains(item.id));
+    for (final item in picked) {
+      if (await _blocked(item)) return;
+    }
+    if (!mounted) return;
     final ok = await confirmAction(
       context,
       title: 'Скрыть выбранные',
@@ -360,6 +415,8 @@ class _BrandListScreenState extends State<BrandListScreen> {
   }
 
   Future<void> _softOne(Brand item) async {
+    if (await _blocked(item)) return;
+    if (!mounted) return;
     final ok = await confirmAction(
       context,
       title: 'Скрыть бренд',
@@ -371,6 +428,8 @@ class _BrandListScreenState extends State<BrandListScreen> {
   }
 
   Future<void> _hardOne(Brand item) async {
+    if (await _blocked(item)) return;
+    if (!mounted) return;
     final ok = await confirmAction(
       context,
       title: 'Удалить навсегда',
@@ -403,6 +462,11 @@ const _sortOptions = <(String, bool, String)>[
   ('foundedYear', true, 'Год по возрастанию'),
   ('foundedYear', false, 'Год по убыванию'),
 ];
+
+int? _brandYear(String raw) {
+  if (raw.trim().isEmpty) return null;
+  return int.tryParse(raw.trim());
+}
 
 String _sortCaption(BrandQuery query) {
   final field = switch (query.sortField) {

@@ -1,7 +1,62 @@
 import '../models/brand.dart';
+import '../models/category.dart';
+import '../models/customer.dart';
+import '../models/discipline.dart';
 import '../models/product.dart';
 
+const seedBrandCategoryIds = <int, List<int>>{
+  1: [1, 5, 8],
+  2: [1, 4],
+  3: [1, 2],
+  4: [1, 3],
+  5: [1, 7],
+  6: [1, 2, 4],
+  7: [3, 5],
+  8: [1, 6],
+  9: [1, 2, 5],
+  10: [1, 6],
+  11: [1, 4],
+  12: [1, 7],
+};
+
+String seedBrandEmail(int id) {
+  const slugs = <int, String>{
+    1: 'everlast',
+    2: 'rival',
+    3: 'winning',
+    4: 'cleto',
+    5: 'adidas',
+    6: 'venum',
+    7: 'title',
+    8: 'greenhill',
+    9: 'fairtex',
+    10: 'twins',
+    11: 'hayabusa',
+    12: 'leone',
+  };
+  return '${slugs[id] ?? 'brand$id'}@ring.shop';
+}
+
+List<int> seedDisciplineIds(Product product) {
+  final ids = <int>{1};
+  if (product.categoryIds.contains(5) || product.categoryIds.contains(6)) ids.add(7);
+  if (product.brandId == 9 || product.brandId == 10) ids.add(3);
+  if (product.brandId == 6) ids.add(4);
+  if (product.categoryIds.contains(7)) ids.add(2);
+  return ids.toList()..sort();
+}
+
 List<Brand> buildSeedBrands() {
+  return [
+    for (final brand in _rawSeedBrands())
+      brand.copyWith(
+        email: seedBrandEmail(brand.id),
+        categoryIds: List<int>.of(seedBrandCategoryIds[brand.id] ?? const [1]),
+      ),
+  ];
+}
+
+List<Brand> _rawSeedBrands() {
   return [
     const Brand(
       id: 1,
@@ -92,6 +147,13 @@ List<Brand> buildSeedBrands() {
 }
 
 List<Product> buildSeedProducts() {
+  return [
+    for (final product in _rawSeedProducts())
+      product.copyWith(disciplineIds: seedDisciplineIds(product)),
+  ];
+}
+
+List<Product> _rawSeedProducts() {
   return const [
     Product(
       id: 1,
@@ -409,4 +471,147 @@ List<Product> buildSeedProducts() {
       deletedAt: DateTime.utc(2026, 1, 15),
     ),
   ]).toList();
+}
+
+Category _category(
+  int id,
+  String name,
+  String code,
+  String kind,
+  int year,
+  String description, {
+  DateTime? deletedAt,
+}) {
+  return Category(
+    id: id,
+    name: name,
+    code: code,
+    description: description,
+    kind: kind,
+    introducedYear: year,
+    deletedAt: deletedAt,
+  );
+}
+
+List<Category> buildSeedCategories() {
+  return [
+    _category(1, 'Перчатки', 'GLV', 'Защита', 1910, 'Снаряжение для ударов руками на тренировке и на ринге.'),
+    _category(2, 'Бинты', 'WRP', 'Защита', 1930, 'Фиксируют запястье и костяшки под перчаткой.'),
+    _category(3, 'Капы', 'MTH', 'Защита', 1950, 'Защищают зубы и челюсть во время спарринга.'),
+    _category(4, 'Шлемы', 'HLM', 'Защита', 1960, 'Закрывают голову на тренировочных боях.'),
+    _category(5, 'Груши и мешки', 'BAG', 'Снаряды', 1920, 'Подвесные и напольные снаряды для ударов.'),
+    _category(6, 'Лапы', 'PAD', 'Снаряды', 1970, 'Парные лапы для работы с тренером.'),
+    _category(7, 'Обувь', 'SHO', 'Одежда', 1980, 'Боксёрки и обувь для зала.'),
+    _category(8, 'Защита', 'GRD', 'Защита', 1985, 'Защита корпуса, паха и голени.'),
+    _category(9, 'Шорты', 'SRT', 'Одежда', 1990, 'Боксёрские и тайские шорты.'),
+    _category(10, 'Футболки', 'TSH', 'Одежда', 1995, 'Тренировочные футболки и рашгарды.'),
+    _category(11, 'Скакалки', 'ROP', 'Снаряды', 2001, 'Скоростные скакалки для разминки.'),
+    _category(
+      12,
+      'Нагрудники',
+      'CST',
+      'Защита',
+      1978,
+      'Жёсткая защита корпуса. Позиция снята с витрины.',
+      deletedAt: DateTime.utc(2026, 4, 1),
+    ),
+  ];
+}
+
+List<Discipline> buildSeedDisciplines() {
+  Discipline item(
+    int id,
+    String name,
+    String country,
+    int year,
+    String summary, {
+    DateTime? deletedAt,
+  }) {
+    return Discipline(
+      id: id,
+      name: name,
+      country: country,
+      establishedYear: year,
+      summary: summary,
+      deletedAt: deletedAt,
+    );
+  }
+
+  return [
+    item(1, 'Бокс', 'Великобритания', 1867, 'Удары руками в перчатках по правилам ринга.'),
+    item(2, 'Кикбоксинг', 'США', 1974, 'Удары руками и ногами в полный контакт.'),
+    item(3, 'Муай-тай', 'Таиланд', 1930, 'Тайский бокс: локти, колени, клинч и лоу-кик.'),
+    item(4, 'ММА', 'США', 1993, 'Смешанные единоборства в клетке и в клетке-октагоне.'),
+    item(5, 'Сават', 'Франция', 1832, 'Французский бокс ногами в обуви.'),
+    item(6, 'Рукопашный бой', 'Россия', 1979, 'Прикладной раздел с ударами и борьбой.'),
+    item(7, 'Общая подготовка', 'Германия', 1950, 'ОФП, мешки, скакалка и работа на снарядах.'),
+    item(8, 'Кудо', 'Япония', 1981, 'Контакт в шлеме с ударами и борьбой.'),
+    item(9, 'К-1', 'Япония', 1993, 'Стойка кикбоксинга по правилам К-1.'),
+    item(10, 'Самбо', 'Россия', 1938, 'Борьба и боевое самбо в куртке.'),
+    item(11, 'Бокс олимпийский', 'Франция', 1904, 'Любительский бокс по олимпийской формуле.'),
+    item(
+      12,
+      'Панкратион',
+      'Греция',
+      1996,
+      'Возрождённый античный раздел. Снят с витрины.',
+      deletedAt: DateTime.utc(2025, 11, 2),
+    ),
+  ];
+}
+
+List<Customer> buildSeedCustomers() {
+  Customer person(
+    int id,
+    String name,
+    String email,
+    String phone,
+    String city,
+    int year,
+    String card,
+    int discount, {
+    bool active = true,
+    DateTime? deletedAt,
+  }) {
+    return Customer(
+      id: id,
+      fullName: name,
+      email: email,
+      phone: phone,
+      city: city,
+      birthYear: year,
+      deletedAt: deletedAt,
+      card: LoyaltyCard(
+        number: card,
+        issuedOn: '2024-0${(id % 9) + 1}-15',
+        discountPercent: discount,
+        active: active,
+      ),
+    );
+  }
+
+  return [
+    person(1, 'Иван Петров', 'ivan.petrov@mail.ru', '+79001110001', 'Москва', 1994, '100001', 5),
+    person(2, 'Мария Соколова', 'maria.sokolova@mail.ru', '+79001110002', 'Санкт-Петербург', 1998, '100002', 10),
+    person(3, 'Артём Кузнецов', 'artem.kuznetsov@mail.ru', '+79001110003', 'Казань', 1991, '100003', 0),
+    person(4, 'Елена Орлова', 'elena.orlova@mail.ru', '+79001110004', 'Екатеринбург', 1987, '100004', 15),
+    person(5, 'Никита Волков', 'nikita.volkov@mail.ru', '+79001110005', 'Новосибирск', 2001, '100005', 5),
+    person(6, 'Ольга Белова', 'olga.belova@mail.ru', '+79001110006', 'Краснодар', 1996, '100006', 10, active: false),
+    person(7, 'Павел Морозов', 'pavel.morozov@mail.ru', '+79001110007', 'Москва', 1984, '100007', 20),
+    person(8, 'Дарья Лебедева', 'darya.lebedeva@mail.ru', '+79001110008', 'Казань', 2003, '100008', 5),
+    person(9, 'Сергей Новиков', 'sergey.novikov@mail.ru', '+79001110009', 'Санкт-Петербург', 1979, '100009', 15),
+    person(10, 'Алина Ким', 'alina.kim@mail.ru', '+79001110010', 'Екатеринбург', 1999, '100010', 0),
+    person(11, 'Глеб Сафин', 'gleb.safin@mail.ru', '+79001110011', 'Краснодар', 1992, '100011', 10),
+    person(
+      12,
+      'Кирилл Ершов',
+      'kirill.ershov@mail.ru',
+      '+79001110012',
+      'Новосибирск',
+      1988,
+      '100012',
+      5,
+      deletedAt: DateTime.utc(2026, 5, 1),
+    ),
+  ];
 }

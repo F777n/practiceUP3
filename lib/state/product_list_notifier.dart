@@ -8,13 +8,15 @@ import '../models/page_result.dart';
 import '../models/product.dart';
 import '../models/product_query.dart';
 import '../repositories/brand_repository.dart';
+import '../repositories/directory_repositories.dart';
 import '../repositories/product_repository.dart';
 
 class ProductListNotifier extends ChangeNotifier {
-  ProductListNotifier(this._repository, this._brands);
+  ProductListNotifier(this._repository, this._brands, this._categories);
 
   final ProductRepository _repository;
   final BrandRepository _brands;
+  final CategoryRepository _categories;
 
   ProductQuery _query = const ProductQuery();
   PageResult<Product> _result = PageResult<Product>.empty();
@@ -22,6 +24,7 @@ class ProductListNotifier extends ChangeNotifier {
   String? _error;
   final Set<int> _selected = {};
   List<Brand> _brandOptions = const [];
+  List<Category> _categoryOptions = const [];
   bool _brandsReady = false;
   bool _failNext = false;
   int _ticket = 0;
@@ -33,7 +36,8 @@ class ProductListNotifier extends ChangeNotifier {
   Set<int> get selected => Set.unmodifiable(_selected);
   bool get hasSelection => _selected.isNotEmpty;
   List<Brand> get brandOptions => _brandOptions;
-  List<Category> get categories => productCategories;
+  List<Category> get categories =>
+      _categoryOptions.where((item) => !item.isDeleted).toList(growable: false);
 
   String brandName(int id) {
     for (final brand in _brandOptions) {
@@ -42,9 +46,17 @@ class ProductListNotifier extends ChangeNotifier {
     return 'Бренд #$id';
   }
 
-  String categoryTitle(int id) => categoryName(id);
+  String categoryTitle(int id) {
+    for (final category in _categoryOptions) {
+      if (category.id == id) return category.name;
+    }
+    return categoryName(id);
+  }
 
-  String categoryNames(List<int> ids) => categoryLabel(ids);
+  String categoryNames(List<int> ids) {
+    if (ids.isEmpty) return '—';
+    return ids.map(categoryTitle).join(', ');
+  }
 
   Future<void> load() async {
     final ticket = ++_ticket;
@@ -60,6 +72,7 @@ class ProductListNotifier extends ChangeNotifier {
         _brandOptions = await _brands.all();
         _brandsReady = true;
       }
+      _categoryOptions = await _categories.all();
       if (ticket != _ticket) return;
       final result = await _repository.find(_query);
       if (ticket != _ticket) return;

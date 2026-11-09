@@ -6,6 +6,7 @@ import '../format.dart';
 import '../models/load_status.dart';
 import '../navigation.dart';
 import '../repositories/brand_repository.dart';
+import '../repositories/directory_repositories.dart';
 import '../repositories/product_repository.dart';
 import '../state/product_details_notifier.dart';
 import '../state/product_list_notifier.dart';
@@ -31,6 +32,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     _notifier = ProductDetailsNotifier(
       context.read<ProductRepository>(),
       context.read<BrandRepository>(),
+      context.read<CategoryRepository>(),
+      context.read<DisciplineRepository>(),
     )..load(widget.id);
   }
 
@@ -185,6 +188,10 @@ class ProductDetailsView extends StatelessWidget {
                       width: 240,
                       child: DetailLine(label: 'Категории', value: notifier.categories),
                     ),
+                    SizedBox(
+                      width: 240,
+                      child: DetailLine(label: 'Дисциплины', value: notifier.disciplines),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -198,6 +205,11 @@ class ProductDetailsView extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    FilledButton.tonalIcon(
+                      onPressed: () => context.go('/products/${product.id}/edit'),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Изменить'),
+                    ),
                     if (!product.isDeleted)
                       OutlinedButton.icon(
                         onPressed: () => _soft(context, notifier),

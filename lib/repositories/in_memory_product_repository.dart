@@ -2,12 +2,14 @@ import '../data/seed.dart';
 import '../models/page_result.dart';
 import '../models/product.dart';
 import '../models/product_query.dart';
+import '../storage/persist_gate.dart';
 import 'product_repository.dart';
 
 class InMemoryProductRepository implements ProductRepository {
   InMemoryProductRepository({
     List<Product>? products,
     this.latency = const Duration(milliseconds: 250),
+    this.gate,
   }) : _items = List<Product>.of(products ?? buildSeedProducts()) {
     _nextId = _items.fold<int>(0, (max, item) {
       return item.id > max ? item.id : max;
@@ -16,8 +18,16 @@ class InMemoryProductRepository implements ProductRepository {
   }
 
   final Duration latency;
+  final PersistGate? gate;
   final List<Product> _items;
   late int _nextId;
+
+  List<Product> snapshot() => List<Product>.unmodifiable(_items);
+
+  @override
+  Future<List<Product>> all() async => snapshot();
+
+  void _touch() => gate?.touch();
 
   @override
   Future<PageResult<Product>> find(ProductQuery q) async {
@@ -66,6 +76,25 @@ class InMemoryProductRepository implements ProductRepository {
   }
 
   @override
+  Future<int> countLinked({int? brandId, int? categoryId, int? disciplineId}) async {
+    return _items.where((item) {
+      if (brandId != null && item.brandId != brandId) return false;
+      if (categoryId != null && !item.categoryIds.contains(categoryId)) return false;
+      if (disciplineId != null && !item.disciplineIds.contains(disciplineId)) return false;
+      return brandId != null || categoryId != null || disciplineId != null;
+    }).length;
+  }
+
+  @override
+  Future<bool> isSkuTaken(String sku, {int? exceptId}) async {
+    final needle = sku.trim().toLowerCase();
+    if (needle.isEmpty) return false;
+    return _items.any(
+      (item) => item.id != exceptId && item.sku.trim().toLowerCase() == needle,
+    );
+  }
+
+  @override
   Future<Product> create(Product draft) async {
     final created = Product(
       id: _nextId++,
@@ -75,11 +104,13 @@ class InMemoryProductRepository implements ProductRepository {
       priceRub: draft.priceRub,
       weightGrams: draft.weightGrams,
       brandId: draft.brandId,
-      categoryIds: draft.categoryIds,
+      categoryIds: List<int>.of(draft.categoryIds),
+      disciplineIds: List<int>.of(draft.disciplineIds),
       stockTotal: draft.stockTotal,
       stockAvailable: draft.stockAvailable,
     );
     _items.add(created);
+    _touch();
     return created;
   }
 
@@ -88,6 +119,7 @@ class InMemoryProductRepository implements ProductRepository {
     final index = _items.indexWhere((item) => item.id == product.id);
     if (index == -1) throw StateError('Товар ${product.id} не найден');
     _items[index] = product;
+    _touch();
     return product;
   }
 
@@ -96,6 +128,7 @@ class InMemoryProductRepository implements ProductRepository {
     final index = _items.indexWhere((item) => item.id == id);
     if (index == -1) throw StateError('Товар $id не найден');
     _items[index] = _items[index].copyWith(deletedAt: DateTime.now());
+    _touch();
   }
 
   @override
@@ -103,6 +136,7 @@ class InMemoryProductRepository implements ProductRepository {
     final removed = _items.length;
     _items.removeWhere((item) => item.id == id);
     if (_items.length == removed) throw StateError('Товар $id не найден');
+    _touch();
   }
 
   @override
@@ -110,6 +144,7 @@ class InMemoryProductRepository implements ProductRepository {
     final index = _items.indexWhere((item) => item.id == id);
     if (index == -1) throw StateError('Товар $id не найден');
     _items[index] = _items[index].copyWith(clearDeletedAt: true);
+    _touch();
   }
 
   @override
@@ -124,6 +159,7 @@ class InMemoryProductRepository implements ProductRepository {
       _items[index] = _items[index].copyWith(deletedAt: DateTime.now());
       count++;
     }
+    if (count > 0) _touch();
     return count;
   }
 }

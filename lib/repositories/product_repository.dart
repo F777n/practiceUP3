@@ -5,7 +5,13 @@ import '../models/product_query.dart';
 abstract interface class ProductRepository {
   Future<PageResult<Product>> find(ProductQuery query);
 
+  Future<List<Product>> all();
+
   Future<Product?> findById(int id);
+
+  Future<int> countLinked({int? brandId, int? categoryId, int? disciplineId});
+
+  Future<bool> isSkuTaken(String sku, {int? exceptId});
 
   Future<Product> create(Product product);
 

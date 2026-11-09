@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 
-import '../data/catalog.dart';
 import '../models/load_status.dart';
 import '../models/product.dart';
 import '../repositories/brand_repository.dart';
+import '../repositories/directory_repositories.dart';
 import '../repositories/product_repository.dart';
 
 class ProductDetailsNotifier extends ChangeNotifier {
-  ProductDetailsNotifier(this._products, this._brands);
+  ProductDetailsNotifier(this._products, this._brands, this._categories, this._disciplines);
 
   final ProductRepository _products;
   final BrandRepository _brands;
+  final CategoryRepository _categories;
+  final DisciplineRepository _disciplines;
 
   Product? product;
   String brandName = '';
   String categories = '';
+  String disciplines = '';
   LoadStatus status = LoadStatus.idle;
   String? error;
   bool permanentlyDeleted = false;
@@ -34,9 +37,12 @@ class ProductDetailsNotifier extends ChangeNotifier {
         return;
       }
       final brand = await _brands.findById(found.brandId);
+      final categoryList = await _categories.all();
+      final disciplineList = await _disciplines.all();
       product = found;
       brandName = brand?.name ?? 'Бренд #${found.brandId}';
-      categories = categoryLabel(found.categoryIds);
+      categories = _names(found.categoryIds, categoryList.map((item) => (item.id, item.name)));
+      disciplines = _names(found.disciplineIds, disciplineList.map((item) => (item.id, item.name)));
       status = LoadStatus.success;
     } catch (error) {
       this.error = 'Не удалось открыть карточку: $error';
@@ -91,5 +97,15 @@ class ProductDetailsNotifier extends ChangeNotifier {
     status = LoadStatus.success;
     notifyListeners();
     return true;
+  }
+
+  String _names(List<int> ids, Iterable<(int, String)> options) {
+    if (ids.isEmpty) return '—';
+    return ids.map((id) {
+      for (final option in options) {
+        if (option.$1 == id) return option.$2;
+      }
+      return '#$id';
+    }).join(', ');
   }
 }

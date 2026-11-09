@@ -2,12 +2,14 @@ import '../data/seed.dart';
 import '../models/brand.dart';
 import '../models/brand_query.dart';
 import '../models/page_result.dart';
+import '../storage/persist_gate.dart';
 import 'brand_repository.dart';
 
 class InMemoryBrandRepository implements BrandRepository {
   InMemoryBrandRepository({
     List<Brand>? brands,
     this.latency = const Duration(milliseconds: 250),
+    this.gate,
   }) : _items = List<Brand>.of(brands ?? buildSeedBrands()) {
     _nextId = _items.fold<int>(0, (max, item) {
       return item.id > max ? item.id : max;
@@ -16,8 +18,13 @@ class InMemoryBrandRepository implements BrandRepository {
   }
 
   final Duration latency;
+  final PersistGate? gate;
   final List<Brand> _items;
   late int _nextId;
+
+  List<Brand> snapshot() => List<Brand>.unmodifiable(_items);
+
+  void _touch() => gate?.touch();
 
   @override
   Future<List<Brand>> all() async => List<Brand>.unmodifiable(_items);
@@ -38,6 +45,12 @@ class InMemoryBrandRepository implements BrandRepository {
     }
     if (q.country != null) {
       rows = rows.where((item) => item.country == q.country).toList();
+    }
+    if (q.yearFrom != null) {
+      rows = rows.where((item) => item.foundedYear >= q.yearFrom!).toList();
+    }
+    if (q.yearTo != null) {
+      rows = rows.where((item) => item.foundedYear <= q.yearTo!).toList();
     }
     rows.sort((a, b) {
       final result = switch (q.sortField) {
@@ -67,8 +80,11 @@ class InMemoryBrandRepository implements BrandRepository {
       country: draft.country,
       foundedYear: draft.foundedYear,
       specialization: draft.specialization,
+      email: draft.email,
+      categoryIds: List<int>.of(draft.categoryIds),
     );
     _items.add(created);
+    _touch();
     return created;
   }
 
@@ -77,6 +93,7 @@ class InMemoryBrandRepository implements BrandRepository {
     final index = _items.indexWhere((item) => item.id == brand.id);
     if (index == -1) throw StateError('Бренд ${brand.id} не найден');
     _items[index] = brand;
+    _touch();
     return brand;
   }
 
@@ -85,6 +102,7 @@ class InMemoryBrandRepository implements BrandRepository {
     final index = _items.indexWhere((item) => item.id == id);
     if (index == -1) throw StateError('Бренд $id не найден');
     _items[index] = _items[index].copyWith(deletedAt: DateTime.now());
+    _touch();
   }
 
   @override
@@ -92,6 +110,7 @@ class InMemoryBrandRepository implements BrandRepository {
     final before = _items.length;
     _items.removeWhere((item) => item.id == id);
     if (_items.length == before) throw StateError('Бренд $id не найден');
+    _touch();
   }
 
   @override
@@ -99,6 +118,7 @@ class InMemoryBrandRepository implements BrandRepository {
     final index = _items.indexWhere((item) => item.id == id);
     if (index == -1) throw StateError('Бренд $id не найден');
     _items[index] = _items[index].copyWith(clearDeletedAt: true);
+    _touch();
   }
 
   @override
@@ -110,6 +130,7 @@ class InMemoryBrandRepository implements BrandRepository {
       _items[index] = _items[index].copyWith(deletedAt: DateTime.now());
       count++;
     }
+    if (count > 0) _touch();
     return count;
   }
 }

@@ -41,6 +41,7 @@ dependencies:
   # GoRouter, queryParameters и path URL те же.
   go_router: ^15.1.2
   provider: ^6.1.2
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:

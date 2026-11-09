@@ -6,7 +6,9 @@ import '../format.dart';
 import '../models/load_status.dart';
 import '../models/product_query.dart';
 import '../navigation.dart';
+import '../forms/validators.dart';
 import '../repositories/brand_repository.dart';
+import '../repositories/directory_repositories.dart';
 import '../repositories/product_repository.dart';
 import '../state/brand_details_notifier.dart';
 import '../state/brand_list_notifier.dart';
@@ -32,6 +34,7 @@ class _BrandDetailsPageState extends State<BrandDetailsPage> {
     _notifier = BrandDetailsNotifier(
       context.read<BrandRepository>(),
       context.read<ProductRepository>(),
+      context.read<CategoryRepository>(),
     )..load(widget.id);
   }
 
@@ -151,6 +154,14 @@ class BrandDetailsView extends StatelessWidget {
                       ),
                     ),
                     SizedBox(
+                      width: 280,
+                      child: DetailLine(label: 'Почта', value: brand.email),
+                    ),
+                    SizedBox(
+                      width: 280,
+                      child: DetailLine(label: 'Категории', value: notifier.categories),
+                    ),
+                    SizedBox(
                       width: 220,
                       child: DetailLine(
                         label: 'Товаров в каталоге',
@@ -163,6 +174,12 @@ class BrandDetailsView extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                FilledButton.tonalIcon(
+                  onPressed: () => context.go('/brands/${brand.id}/edit'),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Изменить'),
                 ),
                 const SizedBox(height: 8),
                 FilledButton.tonalIcon(
@@ -207,7 +224,25 @@ class BrandDetailsView extends StatelessWidget {
     }
   }
 
+  Future<bool> _blocked(BuildContext context, BrandDetailsNotifier notifier) async {
+    final message = linkedDeleteMessage(notifier.brand?.name ?? 'Бренд', notifier.productCount);
+    if (message == null) return false;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удаление невозможно'),
+        content: Text(message),
+        actions: [
+          FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Понятно')),
+        ],
+      ),
+    );
+    return true;
+  }
+
   Future<void> _soft(BuildContext context, BrandDetailsNotifier notifier) async {
+    if (await _blocked(context, notifier)) return;
+    if (!context.mounted) return;
     final name = notifier.brand?.name ?? '';
     final ok = await confirmAction(
       context,
@@ -230,6 +265,8 @@ class BrandDetailsView extends StatelessWidget {
   }
 
   Future<void> _hard(BuildContext context, BrandDetailsNotifier notifier) async {
+    if (await _blocked(context, notifier)) return;
+    if (!context.mounted) return;
     final name = notifier.brand?.name ?? '';
     final ok = await confirmAction(
       context,

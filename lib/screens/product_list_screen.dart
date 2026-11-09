@@ -62,6 +62,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
         subtitle:
             'Поиск, фильтры, сортировка и страница пишутся в адресе. Ссылку можно открыть заново.',
         actions: [
+          FilledButton.icon(
+            onPressed: () => context.go('/products/new'),
+            icon: const Icon(Icons.add),
+            label: const Text('Добавить'),
+          ),
           IconButton(
             tooltip: 'Как работает удаление',
             onPressed: () => showDeleteHelp(context),
